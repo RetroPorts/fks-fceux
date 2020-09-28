@@ -46,8 +46,8 @@
 #define SCREEN_HORIZONTAL_SIZE      RES_HW_SCREEN_HORIZONTAL
 #define SCREEN_VERTICAL_SIZE        RES_HW_SCREEN_VERTICAL
 
-#define SCROLL_SPEED_PX             240 //This means no animations but also no tearing effect
-#define FPS_MENU                    30
+#define SCROLL_SPEED_PX             30
+#define FPS_MENU                    50
 #define ARROWS_PADDING              8
 
 #define MENU_ZONE_WIDTH             SCREEN_HORIZONTAL_SIZE
@@ -120,6 +120,7 @@ int aspect_ratio_factor_step = 10;
 const char *resume_options_str[] = {RESUME_OPTIONS};
 
 int savestate_slot = 0;
+static int quick_load_slot_chosen = 0;
 
 
 /// -------------- FUNCTIONS DECLARATION --------------
@@ -426,7 +427,7 @@ void init_menu_system_values(){
 
 void menu_screen_refresh(int menuItem, int prevItem, int scroll, uint8_t menu_confirmation, uint8_t menu_action){
     /// --------- Vars ---------
-    int print_arrows = 1;
+    int print_arrows = (scroll==0)?1:0;
 
     /// --------- Clear HW screen ----------
     if(SDL_BlitSurface(backup_hw_screen, NULL, draw_screen, NULL)){
@@ -519,7 +520,12 @@ void menu_screen_refresh(int menuItem, int prevItem, int scroll, uint8_t menu_co
 
         case MENU_TYPE_LOAD:
             /// ---- Write slot -----
-            sprintf(text_tmp, "FROM SLOT   < %d >", savestate_slot+1);
+            if(quick_load_slot_chosen){
+                sprintf(text_tmp, "FROM AUTO SAVE");
+            }
+            else{
+                sprintf(text_tmp, "FROM SLOT   < %d >", savestate_slot+1);
+            }
             text_surface = TTF_RenderText_Blended(menu_info_font, text_tmp, text_color);
             text_pos.x = (draw_screen->w - MENU_ZONE_WIDTH)/2 + (MENU_ZONE_WIDTH - text_surface->w)/2;
             text_pos.y = draw_screen->h - MENU_ZONE_HEIGHT/2 - text_surface->h/2;
@@ -535,17 +541,22 @@ void menu_screen_refresh(int menuItem, int prevItem, int scroll, uint8_t menu_co
                     text_surface = TTF_RenderText_Blended(menu_info_font, text_tmp, text_color);
                 }
                 else{
-                    /// ---- Write current Save state ---- 
-                    strcpy(fname, FCEU_MakeFName(FCEUMKF_STATE,savestate_slot,NULL).c_str());
-                    if(file_exists(fname))
-                    {
-                        printf("Found Load slot: %s\n", basename(fname));
-                        char *bname = basename(fname);
-                        if(strlen(bname) > limit_filename_size){bname[limit_filename_size]=0;} //limiting size
-                        text_surface = TTF_RenderText_Blended(menu_small_info_font,bname, text_color);
+                    if(quick_load_slot_chosen){
+                        text_surface = TTF_RenderText_Blended(menu_info_font, " ", text_color);
                     }
                     else{
-                        text_surface = TTF_RenderText_Blended(menu_info_font, "Free", text_color);
+                        /// ---- Write current Save state ---- 
+                        strcpy(fname, FCEU_MakeFName(FCEUMKF_STATE,savestate_slot,NULL).c_str());
+                        if(file_exists(fname))
+                        {
+                            printf("Found Load slot: %s\n", basename(fname));
+                            char *bname = basename(fname);
+                            if(strlen(bname) > limit_filename_size){bname[limit_filename_size]=0;} //limiting size
+                            text_surface = TTF_RenderText_Blended(menu_small_info_font,bname, text_color);
+                        }
+                        else{
+                            text_surface = TTF_RenderText_Blended(menu_info_font, "Free", text_color);
+                        }
                     }
                 }
             }
@@ -737,8 +748,21 @@ void run_menu_loop()
                         }
                         else if(idx_menus[menuItem] == MENU_TYPE_LOAD){
                             MENU_DEBUG_PRINTF("Load Slot DOWN\n");
-                            //idx_load_slot = (!idx_load_slot)?(MAX_SAVE_SLOTS-1):(idx_load_slot-1);
-                            savestate_slot = (!savestate_slot)?(MAX_SAVE_SLOTS-1):(savestate_slot-1);
+                            
+                            /** Choose quick save file or standard saveslot for loading */
+                            if(!quick_load_slot_chosen &&
+                                savestate_slot == 0 &&
+                                access(quick_save_file, F_OK ) != -1){
+                                quick_load_slot_chosen = 1;
+                            }
+                            else if(quick_load_slot_chosen){
+                                quick_load_slot_chosen = 0;
+                                savestate_slot = MAX_SAVE_SLOTS-1;  
+                            }
+                            else{
+                                savestate_slot = (!savestate_slot)?(MAX_SAVE_SLOTS-1):(savestate_slot-1);
+                            }
+                            
                             /// ------ Refresh screen ------
                             screen_refresh = 1;
                         }
@@ -791,8 +815,21 @@ void run_menu_loop()
                         }
                         else if(idx_menus[menuItem] == MENU_TYPE_LOAD){
                             MENU_DEBUG_PRINTF("Load Slot UP\n");
-                            //idx_load_slot = (idx_load_slot+1)%MAX_SAVE_SLOTS;
-                            savestate_slot = (savestate_slot+1)%MAX_SAVE_SLOTS;
+                            
+                            /** Choose quick save file or standard saveslot for loading */
+                            if(!quick_load_slot_chosen &&
+                                savestate_slot == MAX_SAVE_SLOTS-1 &&
+                                access(quick_save_file, F_OK ) != -1){
+                                quick_load_slot_chosen = 1;
+                            }
+                            else if(quick_load_slot_chosen){
+                                quick_load_slot_chosen = 0;
+                                savestate_slot = 0; 
+                            }
+                            else{
+                                savestate_slot = (savestate_slot+1)%MAX_SAVE_SLOTS;
+                            }
+                            
                             /// ------ Refresh screen ------
                             screen_refresh = 1;
                         }
@@ -840,12 +877,23 @@ void run_menu_loop()
                                 menu_screen_refresh(menuItem, prevItem, scroll, menu_confirmation, 1);
 
                                 /// ------ Load game ------
-                                FCEUI_SelectState(savestate_slot, 0);
-                                FCEUI_LoadState(NULL);
+                                if(quick_load_slot_chosen){
+                                    FCEUI_LoadState(quick_save_file);
+                                }
+                                else{
+                                    FCEUI_SelectState(savestate_slot, 0);
+                                    FCEUI_LoadState(NULL);
+                                }
 
                                 /// ----- Hud Msg -----
-                                sprintf(shell_cmd, "%s %d \"      LOADED FROM SLOT %d\"", 
-                                    SHELL_CMD_NOTIF, NOTIF_SECONDS_DISP, savestate_slot+1);                   
+                                if(quick_load_slot_chosen){
+                                    sprintf(shell_cmd, "%s %d \"     LOADED FROM AUTO SAVE\"", 
+                                        SHELL_CMD_NOTIF, NOTIF_SECONDS_DISP);
+                                }
+                                else{
+                                    sprintf(shell_cmd, "%s %d \"      LOADED FROM SLOT %d\"", 
+                                        SHELL_CMD_NOTIF, NOTIF_SECONDS_DISP, savestate_slot+1);
+                                }
                                 fp = popen(shell_cmd, "r");
                                 if (fp == NULL) {
                                     MENU_ERROR_PRINTF("Failed to run command %s\n", shell_cmd);
@@ -1131,64 +1179,3 @@ int launch_resume_menu_loop()
 
     return option_idx;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

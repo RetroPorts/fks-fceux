@@ -527,8 +527,8 @@ void BlitScreen(uint8 *XBuf) {
 	//printf("s_tlines = %d, s_srendline=%d, NOFFSET = %d, NWIDTH=%d\n", s_tlines, s_srendline, NOFFSET, NWIDTH);
 	
 	switch (aspect_ratio) {
-		case ASPECT_RATIOS_TYPE_STRECHED:
-		/* Streched NN*/
+		case ASPECT_RATIOS_TYPE_STRETCHED: 
+		/* Stretched NN*/
 		flip_NNOptimized_AllowOutOfScreen_NES(pBuf, hw_screen, hw_screen->w, hw_screen->h);
 		break;
 
@@ -540,7 +540,7 @@ void BlitScreen(uint8 *XBuf) {
 
 		default:
 		aspect_ratio = ASPECT_RATIOS_TYPE_CROPPED;
-		/* Streched NN*/
+		/* Cropped NN*/
 		flip_NNOptimized_AllowOutOfScreen_NES(pBuf, hw_screen, NWIDTH, s_tlines);
 		break;
 	}
