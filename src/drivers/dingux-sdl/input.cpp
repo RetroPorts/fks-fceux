@@ -169,11 +169,11 @@ static int ispressed(int sdlk_code)
 	return 0;
 }
 
-// mega hack to reset once pressed key
-static int resetkey(int sdlk_code)
+// Hack to force reset one pressed key
+static void resetkey(int sdlk_code)
 {
-	Uint8 *keystate = SDL_GetKeyState(NULL);
-	keystate[sdlk_code] = 0;
+	g_keyState[sdlk_code] = 0;
+	return;
 }
 
 static int g_fkbEnabled = 0;
@@ -320,20 +320,21 @@ static void KeyboardCommands() {
 	}
 
 	if (ispressed(FUNKEY_AR_CHANGE)) {
-		printf("Aspect ration change\n");
+		printf("Aspect ratio change\n");
 		resetkey(FUNKEY_AR_CHANGE);
 		aspect_ratio = (aspect_ratio+1)%NB_ASPECT_RATIOS_TYPES;
 
-		char shell_cmd[100];
-		FILE *fp;
-		sprintf(shell_cmd, "%s %d \"     DISPLAY MODE: %s\"",
+		char shell_cmd_tmp[100];
+		FILE *fp_tmp;
+		sprintf(shell_cmd_tmp, "%s %d \"     DISPLAY MODE: %s\"", 
 			SHELL_CMD_NOTIF, NOTIF_SECONDS_DISP, aspect_ratio_name[aspect_ratio]);
-		fp = popen(shell_cmd, "r");
-		if (fp == NULL) {
-			printf("Failed to run command %s\n", shell_cmd);
+		fp_tmp = popen(shell_cmd_tmp, "r");
+		if (fp_tmp == NULL) {
+			printf("Failed to run command %s\n", shell_cmd_tmp);
 		}
 	}
 
+#if 0
 	// toggle fastforwad
 	if(ispressed(DINGOO_L)) {
 		fastforward = !fastforward;
@@ -409,14 +410,14 @@ static void KeyboardCommands() {
 	 */
 
 	// Famicom disk-system games
-	if (gametype == GIT_FDS) {
+	/*if (gametype == GIT_FDS) {
 		if (_keyonly(Hotkeys[HK_FDS_FLIP]))
 			FCEUI_FDSFlip();
 		if (_keyonly(Hotkeys[HK_FDS_SELECT]))
 			FCEUI_FDSSelect();
 		if (_keyonly(Hotkeys[HK_FDS_EJECT]))
 			FCEUI_FDSInsert();
-	}
+	}*/
 
 	// if not NES Sound Format
 	if (gametype != GIT_NSF) {
@@ -627,6 +628,9 @@ static void KeyboardCommands() {
 		 if(keyonly(9)) SSM(9);
 		 #undef SSM */
 	}
+
+
+#endif //0
 }
 
 /**
