@@ -225,7 +225,7 @@ W_OPTS	= -Wno-write-strings -Wno-sign-compare
 
 F_OPTS = -fomit-frame-pointer -fno-builtin -fno-common
 
-CC_OPTS	= -O2 -mips32 $(F_OPTS) $(W_OPTS) $(SDL_CFLAGS)
+CC_OPTS	= -O2 $(F_OPTS) $(W_OPTS) $(SDL_CFLAGS)
 
 CFLAGS += $(CC_OPTS)
 CFLAGS += -DDINGUX \
@@ -236,7 +236,11 @@ CFLAGS += -DDINGUX \
 	  -D_REENTRANT \
 	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 
-CFLAGS += -fno-strict-aliasing
+CFLAGS += -fno-strict-aliasing \
+		 -g -O3 -pipe $(SDL_CFLAGS) \
+		 -flto -fomit-frame-pointer -fexpensive-optimizations \
+		 -march=armv7-a -mtune=cortex-a7 -mfpu=neon -mfloat-abi=hard \
+		 -ffast-math -funsafe-math-optimizations -mvectorize-with-neon-quad -ftree-vectorize
 
 # CFLAGS += -fprofile-generate -fprofile-dir=/home/retrofw/profile/fceux
 CFLAGS += -fprofile-use -fprofile-dir=./profile -DNO_ROM_BROWSER
@@ -252,7 +256,7 @@ LDFLAGS += -fprofile-generate -fprofile-dir=/home/retrofw/profile/fceux -fno-str
 
 LIBS = -L$(LIBDIR) `sdl-config --libs` -lz -lm
 
-TARGET = fceux.dge
+TARGET = fceux
 
 all: $(TARGET)
 
@@ -296,4 +300,3 @@ ipk: $(TARGET)
 clean:
 	rm -f $(OBJS) fceux/$(TARGET) fceux/fceux.ipk
 	rm -rf /tmp/.fceux-ipk/
-	
