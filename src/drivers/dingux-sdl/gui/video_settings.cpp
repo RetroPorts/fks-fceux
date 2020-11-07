@@ -5,12 +5,12 @@ extern Config *g_config;
 /* MENU COMMANDS */
 
 // Fullscreen mode
-/*static char *scale_tag[] = {
+static char *scale_tag[] = {
 		"Original",
 		"Aspect",
 		"FS Fast",
 		"FS Smooth"
-};*/
+};
 
 // Use PAL or NTSC rate
 static void pal_update(unsigned long key) {
@@ -281,9 +281,31 @@ int RunVideoSettings()
 				DrawText(gui_screen, vd_menu[i].name, 60, y);
 		
 				g_config->getOption(vd_menu[i].option, &itmp);
-				/*if (!strncmp(vd_menu[i].name, "Video scaling", 5)) {
+				if (!strncmp(vd_menu[i].name, "Video scaling", 5)) {
 					sprintf(tmp, "%s", scale_tag[itmp]);
 				}
+				else if (!strncmp(vd_menu[i].name, "Custom palette", 6)) {
+					std::string palname;
+					g_config->getOption(vd_menu[i].option, &palname);
+
+					// Remove path of string
+					const int sz = static_cast<int> (palname.size());
+					const int path_sz = palname.rfind("/", palname.size());
+
+					if (path_sz == sz)
+						strncpy(tmp, palname.c_str(), 32);
+					else
+						strncpy(tmp, palname.substr(path_sz + 1, sz - 1
+								- path_sz).c_str(), 32);
+				}
+				else if (
+					!strncmp(vd_menu[i].name, "Clip sides", 10)
+					|| !strncmp(vd_menu[i].name, "New PPU", 7)
+					|| !strncmp(vd_menu[i].name, "NTSC Palette", 12)
+					|| !strcmp(vd_menu[i].name, "Show FPS")
+					|| !strcmp(vd_menu[i].name, "FPS Throttle")
+					|| !strcmp(vd_menu[i].name, "PAL timing")
+					) {
 					sprintf(tmp, "%s", itmp ? "on" : "off");
 				}
 				else if (
