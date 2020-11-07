@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
 
 #include "dingoo.h"
 #include "dingoo-video.h"
@@ -41,8 +42,8 @@
 
 // GLOBALS
 SDL_Surface *screen;
+SDL_Surface *hw_screen;
 SDL_Surface *nes_screen; // 256x224
-SDL_Surface* rgbscreen;
 
 extern Config *g_config;
 
@@ -159,17 +160,9 @@ int InitVideo(FCEUGI *gi) {
 	// initialize dingoo video mode
 	if (!s_VideoModeSet) {
 		uint32 vm = 0; // 0 - 320x240, 1 - 400x240, 2 - 480x272
-		#define NUMOFVIDEOMODES 3
-		struct {
-			uint32 x;
-			uint32 y;
-		} VModes[NUMOFVIDEOMODES] = {
-			{320, 240},
-			{400, 240},
-			{480, 272}
-		};
 
-		screen = SDL_SetVideoMode(320, 480, 16, SDL_HWSURFACE);
+		hw_screen = SDL_SetVideoMode(RES_HW_SCREEN_HORIZONTAL, RES_HW_SCREEN_VERTICAL, 16, SDL_HWSURFACE | DINGOO_MULTIBUF);
+		screen = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 240, 16, 0, 0, 0, 0);
 		s_VideoModeSet = true;
 	}
 
@@ -180,8 +173,6 @@ int InitVideo(FCEUGI *gi) {
 	if(!nes_screen)
 		printf("Error in SDL_CreateRGBSurfaceFrom\n");
 	SDL_SetPalette(nes_screen, SDL_LOGPAL, (SDL_Color *)s_cpsdl, 0, 256);
-	
-	rgbscreen = SDL_CreateRGBSurface(SDL_HWSURFACE, 320, 240, 16, 0,0,0,0);
 
 	SDL_ShowCursor(0);
 
@@ -286,14 +277,196 @@ void UnlockConsole() {
 
 #define READU16(x)  (uint16) ((uint16)(x)[0] | (uint16)(x)[1] << 8) 
 
+/// Nearest neighboor optimized with possible out of screen coordinates (for cropping)
+void flip_NNOptimized_AllowOutOfScreen(SDL_Surface *src_surface, SDL_Surface *dst_surface, int new_w, int new_h) {
+	int w1 = src_surface->w;
+	//int h1 = src_surface->h;
+	int w2 = new_w;
+	int h2 = new_h;
+	int x_ratio = (int) ((src_surface->w << 16) / w2);
+	int y_ratio = (int) ((src_surface->h << 16) / h2);
+	int x2, y2;
+
+	/// --- Compute padding for centering when out of bounds ---
+	int y_padding = (RES_HW_SCREEN_VERTICAL - new_h) / 2;
+	int x_padding = 0;
+	if (w2 > RES_HW_SCREEN_HORIZONTAL) {
+		x_padding = (w2 - RES_HW_SCREEN_HORIZONTAL) / 2 + 1;
+	}
+	int x_padding_ratio = x_padding * w1 / w2;
+	//printf("src_surface->h=%d, h2=%d\n", src_surface->h, h2);
+
+	for (int i = 0; i < h2; i++) {
+		if (i >= RES_HW_SCREEN_VERTICAL) {
+			continue;
+		}
+
+		uint16_t *t = (uint16_t *) (dst_surface->pixels + ((i + y_padding) * ((w2 > RES_HW_SCREEN_HORIZONTAL) ? RES_HW_SCREEN_HORIZONTAL : w2)) * sizeof (uint16_t));
+		y2 = (i * y_ratio) >> 16;
+		uint16_t *p = (uint16_t *) (src_surface->pixels + (y2 * w1 + x_padding_ratio) * sizeof (uint16_t));
+		int rat = 0;
+		for (int j = 0; j < w2; j++) {
+			if (j >= RES_HW_SCREEN_HORIZONTAL) {
+				continue;
+			}
+			x2 = rat >> 16;
+			*t++ = p[x2];
+			rat += x_ratio;
+			//printf("y=%d, x=%d, y2=%d, x2=%d, (y2*src_surface->w)+x2=%d\n", i, j, y2, x2, (y2 * src_surface->w) + x2);
+		}
+	}
+}
+
+/// Nearest neighboor optimized with possible out of screen coordinates (for cropping)
+void flip_NNOptimized_AllowOutOfScreen_NES(uint8_t *nes_px, SDL_Surface *dst_surface, int new_w, int new_h) {
+	int w1 = 256; //NWIDTH;
+	int h1 = s_tlines;
+	int w2 = new_w;
+	int h2 = new_h;
+	int x_ratio = (int) ((w1 << 16) / w2);
+	int y_ratio = (int) ((h1 << 16) / h2);
+	int x2, y2;
+
+	/// --- Compute padding for centering when out of bounds ---
+	int y_padding = (RES_HW_SCREEN_VERTICAL - new_h) / 2;
+	int x_padding = 0;
+	if (w2 > RES_HW_SCREEN_HORIZONTAL) {
+		x_padding = (w2 - RES_HW_SCREEN_HORIZONTAL) / 2 + 1;
+	}
+	int x_padding_ratio = x_padding * w1 / w2;
+	//printf("src_surface->h=%d, h2=%d\n", src_surface->h, h2);
+
+	for (int i = 0; i < h2; i++) {
+		if (i >= RES_HW_SCREEN_VERTICAL) {
+			continue;
+		}
+
+		uint16_t *t = (uint16_t *) (dst_surface->pixels + ((i + y_padding) * ((w2 > RES_HW_SCREEN_HORIZONTAL) ? RES_HW_SCREEN_HORIZONTAL : w2)) * sizeof (uint16_t));
+		y2 = (i * y_ratio) >> 16;
+		uint8_t *p = (uint8_t *) (nes_px + (y2 * w1 + x_padding_ratio) * sizeof (uint8_t));
+		int rat = 0;
+		for (int j = 0; j < w2; j++) {
+			if (j >= RES_HW_SCREEN_HORIZONTAL) {
+				continue;
+			}
+			x2 = rat>>16;
+			*t++ = s_psdl[p[x2]];
+			rat += x_ratio;
+			//printf("y=%d, x=%d, y2=%d, x2=%d, (y2*src_surface->w)+x2=%d\n", i, j, y2, x2, (y2 * src_surface->w) + x2);
+		}
+	}
+}
+
+/// Nearest neighboor optimized with possible out of screen coordinates (for cropping)
+void flip_Downscale_LeftRightGaussianFilter_NES(uint8_t *nes_px, SDL_Surface *dst_surface, int new_w, int new_h) {
+	int w1 = 256; //NWIDTH;
+	int h1 = s_tlines;
+	int w2 = new_w;
+	int h2 = new_h;
+	int x_ratio = (int) ((w1 << 16) / w2);
+	int y_ratio = (int) ((h1 << 16) / h2);
+	int x1, y1;
+
+	/// --- Compute padding for centering when out of bounds ---
+	int y_padding = (RES_HW_SCREEN_VERTICAL - new_h) / 2;
+	int x_padding = 0;
+	if (w2 > RES_HW_SCREEN_HORIZONTAL) {
+		x_padding = (w2 - RES_HW_SCREEN_HORIZONTAL) / 2 + 1;
+	}
+	int x_padding_ratio = x_padding * w1 / w2;
+	//printf("src_surface->h=%d, h2=%d\n", src_surface->h, h2);
+
+	/// --- Interp params ---
+	int px_diff_prev_x = 0;
+	int px_diff_next_x = 0;
+	uint32_t ponderation_factor;
+	uint8_t left_px_missing, right_px_missing;
+
+	uint16_t *cur_p;
+	uint16_t *cur_p_left;
+	uint16_t *cur_p_right;
+	uint32_t red_comp, green_comp, blue_comp;
+
+	for (int i = 0; i < h2; i++) {
+		if (i >= RES_HW_SCREEN_VERTICAL) {
+			continue;
+		}
+
+		uint16_t *t = (uint16_t *) (dst_surface->pixels + ((i + y_padding) * ((w2 > RES_HW_SCREEN_HORIZONTAL) ? RES_HW_SCREEN_HORIZONTAL : w2)) * sizeof (uint16_t));
+		y1 = (i * y_ratio) >> 16;
+		uint8_t *p = (uint8_t *) (nes_px + (y1 * w1 + x_padding_ratio) * sizeof (uint8_t));
+		int rat = 0;
+		for (int j = 0; j < w2; j++) {
+			if (j >= RES_HW_SCREEN_HORIZONTAL) {
+				continue;
+			}
+
+			// ------ current x value ------
+			x1 = rat >> 16;
+			px_diff_next_x = ((rat + x_ratio) >> 16) - x1;
+
+			// ------ adapted bilinear with 3x3 gaussian blur -------
+			cur_p = &s_psdl[*(p + x1)];
+			if (px_diff_prev_x > 1 || px_diff_next_x > 1 ) {
+				red_comp= ((*cur_p) & 0xF800) << 1;
+				green_comp = ((*cur_p) & 0x07E0) << 1;
+				blue_comp = ((*cur_p) & 0x001F) << 1;
+
+				left_px_missing = (px_diff_prev_x > 1 && x1 > 0);
+				right_px_missing = (px_diff_next_x > 1 && x1 + 1 < w1);
+				ponderation_factor = 2 + left_px_missing + right_px_missing;
+
+				// ---- Interpolate current and left ----
+				if (left_px_missing) {
+					cur_p_left = &s_psdl[*(p + x1 - 1)];
+					red_comp += ((*cur_p_left) & 0xF800);
+					green_comp += ((*cur_p_left) & 0x07E0);
+					blue_comp += ((*cur_p_left) & 0x001F);
+				}
+
+				// ---- Interpolate current and right ----
+				if (right_px_missing) {
+					cur_p_right = &s_psdl[*(p + x1 + 1)];
+					red_comp += ((*cur_p_right) & 0xF800);
+					green_comp += ((*cur_p_right) & 0x07E0);
+					blue_comp += ((*cur_p_right) & 0x001F);
+				}
+
+				/// --- Compute new px value ---
+				if (ponderation_factor == 4) {
+					red_comp = (red_comp >> 2) & 0xF800;
+					green_comp = (green_comp >> 2) & 0x07C0;
+					blue_comp = (blue_comp >> 2) & 0x001F;
+				} else if (ponderation_factor == 2) {
+					red_comp = (red_comp >> 1) & 0xF800;
+					green_comp = (green_comp >> 1) & 0x07C0;
+					blue_comp = (blue_comp >> 1) & 0x001F;
+				} else {
+					red_comp = (red_comp / ponderation_factor) & 0xF800;
+					green_comp = (green_comp / ponderation_factor) & 0x07C0;
+					blue_comp = (blue_comp / ponderation_factor) & 0x001F;
+				}
+
+				/// --- write pixel ---
+				*t++ = red_comp + green_comp + blue_comp;
+			} else {
+			  *t++ = s_psdl[p[x1]];
+			}
+
+			/// save number of pixels to interpolate
+			px_diff_prev_x = px_diff_next_x;
+
+			// ------ next pixel ------
+			rat += x_ratio;
+			//printf("y=%d, x=%d, y2=%d, x2=%d, (y2*src_surface->w)+x2=%d\n", i, j, y2, x2, (y2 * src_surface->w) + x2);
+		}
+	}
+}
+
 /**
  * Pushes the given buffer of bits to the screen.
  */
- 
- extern void upscale_320x448(uint32 *dst, uint8 *src);
- 
-void BlitScreen(uint8 *XBuf) 
-{
+void BlitScreen(uint8 *XBuf) {
 	int x, x2, y, y2;
 	// Taken from fceugc
 	// FDS switch disk requested - need to eject, select, and insert
@@ -324,80 +497,41 @@ void BlitScreen(uint8 *XBuf)
 	}
 
 	// TODO - Move these to its own file?
-	if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
+	if (SDL_MUSTLOCK(hw_screen)) SDL_LockSurface(hw_screen);
 
 	register uint8 *pBuf = XBuf;
 
-	/*if(s_fullscreen == 3) { // fullscreen smooth
-		if (s_clipSides) {
-			upscale_320x240_bilinearish_clip((uint32 *)rgbscreen->pixels, (uint8 *)XBuf + 256 * 8, 256);
-		} else {
-			upscale_320x240_bilinearish_noclip((uint32 *)rgbscreen->pixels, (uint8 *)XBuf + 256 * 8, 256);
-		}
-	} else if(s_fullscreen == 2) { // fullscreen
-		switch(screen->w) {
-			case 320: upscale_320x240((uint32 *)rgbscreen->pixels, (uint8 *)XBuf + 256 * 8); break;
-		}
-	} else if(s_fullscreen == 1) { // aspect fullscreen
-		switch(screen->w) {
-			case 320:
-				pBuf += (s_srendline * 256) + 8;
-				register uint16 *dest = (uint16 *) rgbscreen->pixels;
-				dest += (screen->w * s_srendline) + (rgbscreen->w - 280) / 2 + ((rgbscreen->h - 240) / 2) * rgbscreen->w;
-				//dest += (screen->w * s_srendline) + (screen->w - 280) / 2 + ((screen->h - 240) / 2) * screen->w;
-				// semi fullscreen no blur
-				for (y = s_tlines; y; y--) {
-					for (x = 240; x; x -= 6) {
-						__builtin_prefetch(dest + 2, 1);
-						*dest++ = s_psdl[*pBuf];
-						*dest++ = s_psdl[*(pBuf + 1)];
-						*dest++ = s_psdl[*(pBuf + 2)];
-						*dest++ = s_psdl[*(pBuf + 3)];
-						*dest++ = s_psdl[*(pBuf + 3)];
-						*dest++ = s_psdl[*(pBuf + 4)];
-						*dest++ = s_psdl[*(pBuf + 5)];
-						pBuf += 6;
-					}
-					pBuf += 16;
-					dest += 40;
-				}
-    }
-	} else 
-	{ // native res
-		int32 pinc = (rgbscreen->w - NWIDTH) >> 1;
-		register uint32 *dest = (uint32 *) rgbscreen->pixels;
+	static int prev_aspect_ratio = aspect_ratio;
 
-		// XXX soules - not entirely sure why this is being done yet
-		pBuf += (s_srendline * 256) + NOFFSET;
-		dest += (rgbscreen->w/2 * s_srendline) + pinc / 2 + ((rgbscreen->h - 240) / 4) * rgbscreen->w;
+	/* Clear screen if AR changed */
+	if (prev_aspect_ratio != aspect_ratio) {
+		prev_aspect_ratio = aspect_ratio;
+		dingoo_clear_video();
+	}
 
-		for (y = s_tlines; y; y--, pBuf += 256 - NWIDTH) 
-		{
-		  for (x = NWIDTH >> 3; x; x--) {
-			__builtin_prefetch(dest + 4, 1); 
-			*(dest + 160) = palettetranslate[*(uint16 *) pBuf];
-			*dest++ = palettetranslate[*(uint16 *) pBuf];
-			*(dest + 160) = palettetranslate[*(uint16 *) (pBuf + 2)];
-			*dest++ = palettetranslate[*(uint16 *) (pBuf + 2)];
-			*(dest + 160) = palettetranslate[*(uint16 *) (pBuf + 4)];
-			*dest++ = palettetranslate[*(uint16 *) (pBuf + 4)];
-			*(dest + 160) = palettetranslate[*(uint16 *) (pBuf + 6)];
-			*dest++ = palettetranslate[*(uint16 *) (pBuf + 6)];
-			pBuf += 8;
-		  }   
-		  dest += pinc;
-		  //TonyJih@CTC for RS97 screen
-		  //dest += 160;
-		} 
-	}*/
-	upscale_320x448((uint32 *)screen->pixels + 3840, (uint8 *)XBuf + 256 * 8);
+	//printf("s_tlines = %d, s_srendline=%d, NOFFSET = %d, NWIDTH=%d\n", s_tlines, s_srendline, NOFFSET, NWIDTH);
 	
-	/*for (uint8_t y = 0; y < 239; y++, s += 160, d += 320) // double-line fix by pingflood, 2018
-        memmove((uint32_t*)d, (uint32_t*)s, 1280);*/
-	//SDL_BlitSurface(rgbscreen, NULL, screen, NULL);
+	switch (aspect_ratio) {
+		case ASPECT_RATIOS_TYPE_STRECHED:
+		/* Streched NN*/
+		flip_NNOptimized_AllowOutOfScreen_NES(pBuf, hw_screen, hw_screen->w, hw_screen->h);
+		break;
 
-	if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
-	SDL_Flip(screen);
+		case ASPECT_RATIOS_TYPE_CROPPED:
+		/* Cropped but not centered yes for some games */
+		pBuf += (s_srendline * 256) + NOFFSET;
+		flip_NNOptimized_AllowOutOfScreen_NES(pBuf, hw_screen, NWIDTH, s_tlines);
+		break;
+
+		default:
+		aspect_ratio = ASPECT_RATIOS_TYPE_CROPPED;
+		/* Streched NN*/
+		flip_NNOptimized_AllowOutOfScreen_NES(pBuf, hw_screen, NWIDTH, s_tlines);
+		break;
+	}
+
+	if (SDL_MUSTLOCK(hw_screen)) SDL_UnlockSurface(hw_screen);
+	SDL_Flip(hw_screen);
 }
 
 /**
@@ -428,13 +562,5 @@ void FCEUI_SetAviDisableMovieMessages(bool disable) {
 
 //clear all screens (for multiple-buffering)
 void dingoo_clear_video(void) {
-	SDL_FillRect(screen,NULL,SDL_MapRGBA(screen->format, 0, 0, 0, 255));
-	SDL_Flip(screen);
-
-	SDL_FillRect(screen,NULL,SDL_MapRGBA(screen->format, 0, 0, 0, 255));
-	SDL_Flip(screen);
-#ifdef SDL_TRIPLEBUF
-	SDL_FillRect(screen,NULL,SDL_MapRGBA(screen->format, 0, 0, 0, 255));
-	SDL_Flip(screen);
-#endif
+	memset(hw_screen->pixels, 0, hw_screen->w*hw_screen->h*hw_screen->format->BytesPerPixel);
 }
