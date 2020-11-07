@@ -530,7 +530,7 @@ void FCEUSS_Save(const char *fname, bool display_message)
 	{
 		SaveStateStatus[CurrentState] = 1;
 		if (display_message)
-			FCEU_DispMessage("State %d saved.", 0, CurrentState);
+			; //FCEU_DispMessage("State %d saved.", 0, CurrentState);
 	}
 	redoSS = false;					//we have a new savestate so redo is not possible
 }
@@ -760,14 +760,14 @@ bool FCEUSS_Load(const char *fname, bool display_message)
 			splitpath(fname, 0, 0, szFilename, 0);
             if (display_message)
 			{
-                FCEU_DispMessage("State %s loaded.", 0, szFilename);
+                //FCEU_DispMessage("State %s loaded.", 0, szFilename);
 				//FCEU_DispMessage("State %s loaded. Filename: %s", 0, szFilename, fn);
             }
 		} else
 		{
             if (display_message)
 			{
-                FCEU_DispMessage("State %d loaded.", 0, CurrentState);
+                //FCEU_DispMessage("State %d loaded.", 0, CurrentState);
 				//FCEU_DispMessage("State %d loaded. Filename: %s", 0, CurrentState, fn);
             }
 			SaveStateStatus[CurrentState] = 1;
