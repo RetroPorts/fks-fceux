@@ -228,6 +228,10 @@ Config * InitConfig() {
 	// fm2 -> srt conversion
 	config->addOption("ripsubs", "SDL.RipSubs", "");
 
+	// load from save file
+	config->addOption("loadStateFile", "SDL.loadStateFile", "");
+	config->setOption("SDL.loadStateFile", "");
+
 	// enable new PPU core
 	config->addOption("newppu", "SDL.NewPPU", 0);
 

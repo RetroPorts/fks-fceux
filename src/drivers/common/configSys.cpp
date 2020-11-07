@@ -543,20 +543,24 @@ Config::_parseArgs(int argc,
 
 
 /**
- * Parses first the configuration file, and then overrides with any
- * command-line options that were specified.
+ * Parses the configuration file
+ */
+int
+Config::load()
+{
+
+    // read the config file
+    return _load();
+    }
+
+
+/**
+ * Parses command-line options that were specified.
  */
 int
 Config::parse(int argc,
               char **argv)
 {
-    int error;
-
-    // read the config file
-    error = _load();
-    if(error) {
-        return error;
-    }
 
     // parse the arguments
     return _parseArgs(argc, argv);

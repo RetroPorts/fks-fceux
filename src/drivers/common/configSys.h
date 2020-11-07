@@ -76,7 +76,13 @@ public:
     int getOption(const std::string &, double *);
 
     /**
-     * Parse the arguments.  Also read in the configuration file and
+     * read in the configuration file and
+     * set the variables accordingly.
+     */
+    int load();
+
+    /**
+     * Parse the arguments and
      * set the variables accordingly.
      */
     int parse(int, char **);

@@ -570,6 +570,8 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
+	/* Load config from file */
+	g_config->load();
 	int romIndex = g_config->parse(argc, argv);
 
 	// This is here so that a default fceux.cfg will be created on first
