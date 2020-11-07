@@ -16,6 +16,7 @@
 #include "main.h"
 #include "throttle.h"
 #include "config.h"
+#include "menu.h"
 
 #include "../common/cheat.h"
 #include "../../fceu.h"
@@ -89,6 +90,18 @@ bool swapDuty;
 
 // originally in src/drivers/common/vidblit.cpp
 bool   paldeemphswap   = 0;
+
+
+
+char *load_state_file = NULL;
+std::string load_state_file_string;
+static char *prog_name;
+char *mRomName = NULL;
+char *mRomPath = NULL;
+static char *quick_save_file_extension = "quicksave";
+char *quick_save_file = NULL;
+int mQuickSaveAndPoweroff=0;
+
 
 char* DriverUsage = "\
 		Option         Value   Description\n\
@@ -264,6 +277,55 @@ int CloseGame() {
 }
 
 void FCEUD_Update(uint8 *XBuf, int32 *Buffer, int Count);
+
+/* Handler for SIGUSR1, caused by closing the console */
+void handle_sigusr1(int sig)
+{
+	printf("Caught signal USR1 %d\n", sig);
+
+	/* Exit menu if it was launched */
+	stop_menu_loop = 1;
+
+	/* Signal to quick save and poweoff after next loop */
+	mQuickSaveAndPoweroff = 1;
+}
+
+/* Quick save and turn off the console */
+void quick_save_and_poweroff()
+{
+	/* Vars */
+	char shell_cmd[2048];
+	FILE *fp;
+
+	/* Send command to kill any previously scheduled shutdown */
+	sprintf(shell_cmd, "pkill %s", SHELL_CMD_SCHEDULE_POWERDOWN);
+	fp = popen(shell_cmd, "r");
+	if (fp == NULL) {
+		printf("Failed to run command %s\n", shell_cmd);
+	}
+
+	/* Save  */
+	FCEUI_SaveState(quick_save_file);
+
+	/* Write quick load file */
+	sprintf(shell_cmd, "%s SDL_NOMOUSE=1 \"%s\" --loadStateFile \"%s\" \"%s\"",
+		SHELL_CMD_WRITE_QUICK_LOAD_CMD, prog_name, quick_save_file, mRomName);
+	printf("Cmd write quick load file:\n	%s\n", shell_cmd);
+	fp = popen(shell_cmd, "r");
+	if (fp == NULL) {
+		printf("Failed to run command %s\n", shell_cmd);
+	}
+
+	/* Clean Poweroff */
+	sprintf(shell_cmd, "%s", SHELL_CMD_POWERDOWN);
+	fp = popen(shell_cmd, "r");
+	if (fp == NULL) {
+		printf("Failed to run command %s\n", shell_cmd);
+	}
+
+	/* Exit Emulator */
+	CloseGame();
+}
 
 static void DoFun(int fskip) {
 	uint8 *gfx;
@@ -451,7 +513,7 @@ void FCEUD_TraceInstruction() {
 }
 
 /**
- * Convert FCM movie to FM2 . 
+ * Convert FCM movie to FM2 .
  * Returns 1 on success, otherwise 0.
  */
 int FCEUD_ConvertMovie(const char *name, char *outname) {
@@ -486,7 +548,7 @@ int FCEUD_ConvertMovie(const char *name, char *outname) {
 	return 0;
 }
 
-/* 
+/*
  * Loads a movie, if fcm movie will convert first.  And will
  * ask for rom too, returns 1 on success, 0 otherwise.
  */
@@ -539,10 +601,16 @@ int main(int argc, char *argv[]) {
 
 	FCEUD_Message("\nStarting "FCEU_NAME_AND_VERSION"...\n");
 
+	/* Init Signals */
+	signal(SIGUSR1, handle_sigusr1);
+
 #ifdef WIN32
 	/* Taken from win32 sdl_main.c */
 	SDL_SetModuleHandle(GetModuleHandle(NULL));
 #endif
+
+    /* Set env var for no mouse */
+    putenv(strdup("SDL_NOMOUSE=1"));
 
 	/* SDL_INIT_VIDEO Needed for (joystick config) event processing? */
 	if(SDL_Init(SDL_INIT_VIDEO)) {
@@ -572,7 +640,60 @@ int main(int argc, char *argv[]) {
 
 	/* Load config from file */
 	g_config->load();
+
+	/* Overwrite load file */
+	g_config->setOption("SDL.loadStateFile", "");
+
+	/* Parse args */
 	int romIndex = g_config->parse(argc, argv);
+	printf("romIndex = %d\n", romIndex);
+	if (romIndex < 0) {
+		printf("ERROR romIndex = %d, no ROM specified\n", romIndex);
+		SDL_Quit();
+		return -1;
+	}
+
+	/* load state file */
+	g_config->getOption("SDL.loadStateFile", &load_state_file_string);
+	if (strcmp(load_state_file_string.c_str(), "")) {
+		printf("************ load_state_file: %s\n", load_state_file_string.c_str());
+	}
+
+	/* Get rom names, directory and quick save file */
+	prog_name = argv[0];
+	mRomName = argv[romIndex];
+	FILE *f = fopen(mRomName, "rb");
+	if (f) {
+
+		/* Save Rom path */
+		mRomPath = (char*)malloc(strlen(mRomName)+1) ;
+		strcpy(mRomPath, mRomName) ;
+		char *slash = strrchr ((char*)mRomPath, '/');
+		*slash = 0;
+
+		/* Rom name without extension */
+		char *point = strrchr ((char*)slash+1, '.');
+		*point = 0;
+
+		/* Set quicksave filename */
+		quick_save_file = (char*) malloc(strlen(mRomPath) + strlen(slash+1) + strlen(quick_save_file_extension) + 2 + 1);
+		sprintf(quick_save_file, "%s/%s.%s",
+			mRomPath, slash+1, quick_save_file_extension);
+		printf("************ quick_save_file: %s\n", quick_save_file);
+		printf("************ mRomPath: %s\n", mRomPath);
+		printf("************ mRomName: %s\n", mRomName);
+
+		fclose(f);
+	} else {
+		printf("Rom file %s not found \n", mRomName);
+		SDL_Quit();
+		return -1;
+	}
+
+	/* Override saving directories */
+	FCEUI_SetDirOverride(FCEUIOD_STATES, mRomPath);
+	FCEUI_SetDirOverride(FCEUIOD_NV, mRomPath);
+
 
 	// This is here so that a default fceux.cfg will be created on first
 	// run, even without a valid ROM to play.
@@ -743,6 +864,7 @@ int main(int argc, char *argv[]) {
 	setHotKeys();
 
 	if (romIndex >= 0) {
+		printf("Loading game: argv[%d] = %s\n", romIndex, argv[romIndex]);
 		// load the specified game
 		error = LoadGame(argv[romIndex]);
 		if (error != 1) {
@@ -812,6 +934,33 @@ int main(int argc, char *argv[]) {
 
     // update rom specified input config
 	UpdateInput(g_config);
+	if (strcmp(load_state_file_string.c_str(), "") ) {
+
+		/* Load file */
+		printf("LOADING FROM FILE %s...\n", load_state_file_string.c_str());
+		FCEUI_LoadState(load_state_file_string.c_str());
+		printf("LOADED FROM SLOT %s\n", load_state_file_string.c_str());
+		load_state_file_string = "";
+	} else if (access( quick_save_file, F_OK ) != -1) {
+
+		/* Load quick save file */
+		printf("Found quick save file: %s\n", quick_save_file);
+
+		int resume = launch_resume_menu_loop();
+		if(resume == RESUME_YES){
+			printf("Resume game from quick save file: %s\n", quick_save_file);
+			FCEUI_LoadState(quick_save_file);
+		} else {
+			printf("Reset game\n");
+
+			/* Remove quicksave file if present */
+			if (remove(quick_save_file) == 0) {
+				printf("Deleted successfully: %s\n", quick_save_file);
+			} else {
+				printf("Unable to delete the file: %s\n", quick_save_file);
+			}
+		}
+	}
 
 	// loop playing the game
 	DoFun(frameskip);
@@ -911,7 +1060,7 @@ extern int FDSSwitchRequested;
 
 void FCEUI_FDSFlip(void)
 {
-    /* Taken from fceugc 
+    /* Taken from fceugc
        the commands shouldn't be issued in parallel so
      * we'll delay them so the virtual FDS has a chance
      * to process them

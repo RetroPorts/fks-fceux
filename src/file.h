@@ -10,6 +10,7 @@
 #include <iostream>
 
 extern bool bindSavestate;
+extern char *mRomPath;
 
 struct FCEUFILE {
 	//the stream you can use to access the data

@@ -13,9 +13,11 @@ int CloseGame(void);
 
 int FCEUD_LoadMovie(const char *name, char *romname);
 int FCEUD_DriverReset();
+void quick_save_and_poweroff();
 
 void FCEUI_FDSFlip(void);
 
+extern int mQuickSaveAndPoweroff;
 extern int dendy;
 extern int pal_emulation;
 extern bool swapDuty;

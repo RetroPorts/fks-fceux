@@ -313,6 +313,11 @@ static void KeyboardCommands() {
 		return;
 	}
 
+	/* Quick save and poweroff */
+	if (mQuickSaveAndPoweroff) {
+		quick_save_and_poweroff();
+		mQuickSaveAndPoweroff = 0;
+	}
 
 	if (ispressed(FUNKEY_AR_CHANGE)) {
 		printf("Aspect ration change\n");
