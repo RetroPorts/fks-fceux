@@ -211,15 +211,15 @@ DRIVER_OBJS = $(SRC)drivers/dingux-sdl/config.o $(SRC)drivers/dingux-sdl/input.o
 	$(SRC)drivers/dingux-sdl/dingoo.o $(SRC)drivers/dingux-sdl/dingoo-joystick.o \
 	$(SRC)drivers/dingux-sdl/dingoo-throttle.o $(SRC)drivers/dingux-sdl/dingoo-sound.o \
 	$(SRC)drivers/dingux-sdl/dingoo-video.o $(SRC)drivers/dingux-sdl/dummy-netplay.o \
-	$(SRC)drivers/dingux-sdl/scaler.o $(MINIMAL_OBJS) $(GUI_OBJS)
+	$(SRC)drivers/dingux-sdl/scaler.o $(SRC)drivers/dingux-sdl/menu.o $(MINIMAL_OBJS) $(GUI_OBJS)
 
 OBJS = $(CORE_OBJS) $(BOARDS_OBJS) $(INPUT_OBJS) $(MAPPERS_OBJS) $(UTILS_OBJS) \
 	$(COMMON_DRIVER_OBJS) $(DRIVER_OBJS)
 
 INCLUDEDIR=$(CHAINPREFIX)/include
-CFLAGS = -I$(INCLUDEDIR) -I$(SRC) -flto
-CXXFLAGS = -I$(INCLUDEDIR) -flto
-LDFLAGS = -s $(SDL_LIBS) -lSDL_image -flto
+CFLAGS += -I$(INCLUDEDIR) -I$(SRC) -flto
+CXXFLAGS += -I$(INCLUDEDIR) -flto
+LDFLAGS = -s -lpthread -lz -lpng -lm -lgcc $(SDL_LIBS) -lSDL_ttf -lSDL_image -flto
 
 W_OPTS	= -Wno-write-strings -Wno-sign-compare
 

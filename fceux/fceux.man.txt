@@ -1,10 +1,12 @@
  FCEUX port for OpenDingux
-----
+-------------------------------------------------------------
+
+Thanks go to all people who worked on each incarnation of FCEUX: the_gama, ValdikSS and DiegoSLTS, Steward-fu, gameblabla, pingflood.
 
 Controls
  
- FCEUX         Nes
-----
+ RS97          Nes
+-----------------------------------------------------
  Pad           Pad
  B             A
  Y             B
@@ -13,19 +15,20 @@ Controls
  Select        Select
  Start         Start
 
- POWER         Open menu
+ L Shoulder    Fast forward
+ R Shoulder    Hotkey combo
+ POWER         Open GUI screen
 
-Default Hotkeys
-----
- Select + L     Load state (current slot from gui is used)
- Select + R     Save state (current slot from gui is used)
- Select + X     Change scaling
- Select + Y     Show FPS
- Select + A     Take a screenshot
- Select + B     Change FDS disk
- Select + Left  Insert vsuni coin
- Select + Start Open menu
+ *Default Hotkeys*
 
+ R + A         Save state (current slot from gui is used)
+ R + B         Load state (current slot from gui is used)
+ R + X         Toggle fullscreen
+ R + Y         Flip fds disk
+ R + UP        Toggle framerate display
+ R + LEFT      Insert vsuni coin
+ R + SELECT    Save snapshot
+ R + START     Pause emulation
 
  HOWTO INSTALL FOR RITMIX RZX-50 AND DINGOO A380/A320e:
  - copy folder FCEUX with its contents to "emulator" folder of inner flash-memory of your handheld
@@ -54,7 +57,7 @@ Noticed bugs/features:
 
  FCEUX v0.3
  FCEUx port for Dingux
-----
+-------------------------------------------------------------
 
  Features
 
@@ -155,7 +158,3 @@ Noticed bugs/features:
 
  gama
  gama.coder@gmail.com
-
-----
-
-Thanks go to all people who worked on each incarnation of FCEUX: the_gama, ValdikSS and DiegoSLTS, Steward-fu, gameblabla, pingflood.

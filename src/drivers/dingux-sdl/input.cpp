@@ -28,6 +28,7 @@
 
 #include "dingoo-video.h"
 #include "dingoo.h"
+#include "menu.h"
 
 #include "gui/gui.h"
 
@@ -302,20 +303,38 @@ static void KeyboardCommands() {
 
 	if (MenuRequested) {
 		SilenceSound(1);
+		printf("Menu requested\n");
 		MenuRequested = false;
-		FCEUGUI_Run();
-		while (ispressed(DINGOO_A) || ispressed(DINGOO_B)) { // wait for keyup
+		run_menu_loop();
+		while (ispressed(FUNKEY_MENU) || ispressed(SDLK_b) || ispressed(SDLK_a)) { // wait for keyup
 			SDL_PumpEvents();
 		}
 		SilenceSound(0);
 		return;
 	}
 
-    // toggle fastforwad
-    if(ispressed(DINGOO_L)) {
-        fastforward = !fastforward;
-        resetkey(DINGOO_L);
-    }
+
+	if (ispressed(FUNKEY_AR_CHANGE)) {
+		printf("Aspect ration change\n");
+		resetkey(FUNKEY_AR_CHANGE);
+		aspect_ratio = (aspect_ratio+1)%NB_ASPECT_RATIOS_TYPES;
+
+		char shell_cmd[100];
+		FILE *fp;
+		sprintf(shell_cmd, "%s %d \"     DISPLAY MODE: %s\"",
+			SHELL_CMD_NOTIF, NOTIF_SECONDS_DISP, aspect_ratio_name[aspect_ratio]);
+		fp = popen(shell_cmd, "r");
+		if (fp == NULL) {
+			printf("Failed to run command %s\n", shell_cmd);
+		}
+	}
+
+	// toggle fastforwad
+	if(ispressed(DINGOO_L)) {
+		fastforward = !fastforward;
+		resetkey(DINGOO_L);
+	}
+
 	// R shift + combokeys
 	if(ispressed(DINGOO_R)) {
 		extern int g_slot; // import from gui.cpp
@@ -660,10 +679,8 @@ static void UpdatePhysicalInput()
             }
             break;
         case SDL_KEYDOWN:
-			if (
-				((inputmenu == 0 || inputmenu == 1) && event.key.keysym.sym == DINGOO_MENU)
-				|| ((inputmenu == 0 || inputmenu == 2) && (g_keyState[DINGOO_SELECT] && event.key.keysym.sym == DINGOO_START))
-			) {
+			if (event.key.keysym.sym == FUNKEY_MENU)
+			{
 	            // Because a KEYUP is sent straight after the KEYDOWN for the
 	            // Power switch, SDL_GetKeyState will not ever see this.
 	            // Keep a record of it.
@@ -714,8 +731,7 @@ static int DTestButton(ButtConfig *bc){
 
 ButtConfig GamePadConfig[4][10] = {
 		/* Gamepad 1 */
-		{ MK(LCTRL), MK(LALT), MK(ESCAPE), MK(RETURN), MK(UP), MK(DOWN), MK(LEFT), MK(RIGHT),
-				MK(SPACE), MK(LSHIFT) },
+		{ MK(A), MK(B), MK(K), MK(S), MK(U), MK(D), MK(L), MK(R), MK(N), MK(M) },
 
 		/* Gamepad 2 */
 		GPZ(),
@@ -756,6 +772,7 @@ static void UpdateGamepad(void) {
 		}
 
 		// rapid-fire a, rapid-fire b
+		rapidAlternator = 0;
 		if (rapidAlternator) {
 			for (x = 0; x < 2; x++) {
 				if (DTestButton(&GamePadConfig[wg][8 + x])) {
@@ -1244,8 +1261,8 @@ void UpdateInput(Config *config) {
 	//              input device key.
 	int type, devnum, button;
 
-	// gamepad 0 - 3
-	for (unsigned int i = 0; i < GAMEPAD_NUM_DEVICES; i++) {
+	// gamepad 0 - 3 ---> Nope, let FunKey default in code for now
+	/*for (unsigned int i = 0; i < GAMEPAD_NUM_DEVICES; i++) {
 		char buf[64];
 		snprintf(buf, 20, "SDL.Input.GamePad.%d.", i);
 		prefix = buf;
@@ -1253,7 +1270,8 @@ void UpdateInput(Config *config) {
 		config->getOption(prefix + "DeviceType", &device);
 		if (device.find("Keyboard") != std::string::npos) {
 			type = BUTTC_KEYBOARD;
-		} else if (device.find("Joystick") != std::string::npos) {
+			printf("Device type = keyboard\n");
+		}  else if (device.find("Joystick") != std::string::npos) {
 			type = BUTTC_JOYSTICK;
 		} else {
 			type = 0;
@@ -1267,8 +1285,10 @@ void UpdateInput(Config *config) {
 			GamePadConfig[i][j].DeviceNum[0] = devnum;
 			GamePadConfig[i][j].ButtonNum[0] = button;
 			GamePadConfig[i][j].NumC = 1;
+
+			printf("*** GamePadConfig[%d][%d].ButtonNum[0] = %d\n", i, j, GamePadConfig[i][j].ButtonNum[0]);
 		}
-	}
+	}*/
 
 #if 0
 	// PowerPad 0 - 1
@@ -1436,7 +1456,7 @@ const char *DefaultGamePadDevice[GAMEPAD_NUM_DEVICES] =
 
 const int DefaultGamePad[GAMEPAD_NUM_DEVICES][GAMEPAD_NUM_BUTTONS] = 
 { 
-	{  SDLK_LCTRL, SDLK_LALT, SDLK_ESCAPE, SDLK_RETURN, SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT, SDLK_SPACE, SDLK_LSHIFT },
+	{  SDLK_a, SDLK_b, SDLK_k, SDLK_s, SDLK_u, SDLK_d, SDLK_l, SDLK_r, SDLK_n, SDLK_m },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }

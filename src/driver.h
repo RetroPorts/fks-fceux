@@ -169,6 +169,8 @@ void FCEUI_LoadState(const char *fname, bool display_message=true);
 void FCEUD_SaveStateAs(void);
 void FCEUD_LoadStateFrom(void);
 
+bool file_exists(const char * filename);
+
 //at the minimum, you should call FCEUI_SetInput, FCEUI_SetInputFC, and FCEUI_SetInputFourscore
 //you may also need to maintain your own internal state
 void FCEUD_SetInput(bool fourscore, bool microphone, ESI port0, ESI port1, ESIFC fcexp);

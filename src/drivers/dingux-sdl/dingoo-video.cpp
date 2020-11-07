@@ -26,11 +26,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <SDL/SDL.h>
+#include <SDL/SDL_ttf.h>
 #include <SDL/SDL_image.h>
 
 #include "dingoo.h"
 #include "dingoo-video.h"
 #include "scaler.h"
+#include "menu.h"
 
 #include "../common/vidblit.h"
 #include "../../fceu.h"
@@ -103,6 +105,10 @@ int KillVideo() {
 	if (s_inited == 0)
 		return -1;
 
+	deinit_menu_SDL();
+
+	TTF_Quit();
+
 	SDL_FreeSurface(nes_screen);
 	s_inited = 0;
 	return 0;
@@ -166,6 +172,11 @@ int InitVideo(FCEUGI *gi) {
 		s_VideoModeSet = true;
 	}
 
+	if (TTF_Init()) {
+		fprintf(stderr, "Error TTF_Init: %s\n", TTF_GetError());
+		exit(EXIT_FAILURE);
+	}
+
 	// a hack to bind inner buffer to nes_screen surface
 	extern uint8 *XBuf;
 
@@ -179,6 +190,9 @@ int InitVideo(FCEUGI *gi) {
 	/* clear screen */
 	dingoo_clear_video();
 
+
+	init_menu_SDL();
+
 	return 0;
 }
 
@@ -186,6 +200,7 @@ int InitVideo(FCEUGI *gi) {
  * Toggles the full-screen display.
  */
 void ToggleFS() {
+	dingoo_clear_video();
 }
 
 /* Taken from /src/drivers/common/vidblit.cpp */
