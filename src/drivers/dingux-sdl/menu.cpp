@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <SDL/SDL.h>
 
+#include <libgen.h>
 #include "dingoo.h"
 #include "dingoo-video.h"
 #include "scaler.h"
