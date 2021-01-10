@@ -644,6 +644,9 @@ void run_menu_loop()
     }*/
 	memcpy(backup_hw_screen->pixels, hw_screen->pixels, 
 			RES_HW_SCREEN_HORIZONTAL * RES_HW_SCREEN_VERTICAL * sizeof(u16));
+
+    /* Stop Ampli */
+    popen(SHELL_CMD_TURN_AMPLI_OFF, "r");
  
     /// -------- Main loop ---------
     while (!stop_menu_loop)
@@ -993,6 +996,9 @@ void run_menu_loop()
     if(SDL_EnableKeyRepeat(backup_key_repeat_delay, backup_key_repeat_interval)){
         MENU_ERROR_PRINTF("ERROR with SDL_EnableKeyRepeat: %s\n", SDL_GetError());
     }
+
+    /* Start Ampli */
+    popen(SHELL_CMD_TURN_AMPLI_ON, "r");
 }
 
 
@@ -1015,6 +1021,9 @@ int launch_resume_menu_loop()
     uint8_t screen_refresh = 1;
     uint8_t menu_confirmation = 0;
     int option_idx=RESUME_YES; 
+
+    /* Stop Ampli */
+    popen(SHELL_CMD_TURN_AMPLI_OFF, "r");
 
     /* Save prev key repeat params and set new Key repeat */
     SDL_GetKeyRepeat(&backup_key_repeat_delay, &backup_key_repeat_interval);
@@ -1177,6 +1186,9 @@ int launch_resume_menu_loop()
     if(SDL_EnableKeyRepeat(backup_key_repeat_delay, backup_key_repeat_interval)){
         MENU_ERROR_PRINTF("ERROR with SDL_EnableKeyRepeat: %s\n", SDL_GetError());
     }
+
+    /* Start Ampli */
+    popen(SHELL_CMD_TURN_AMPLI_ON, "r");
 
     return option_idx;
 }
