@@ -33,6 +33,7 @@
 #include "dingoo-video.h"
 #include "scaler.h"
 #include "menu.h"
+#include "configfile.h"
 
 #include "../common/vidblit.h"
 #include "../../fceu.h"

@@ -29,6 +29,7 @@
 #include "dingoo-video.h"
 #include "dingoo.h"
 #include "menu.h"
+#include "configfile.h"
 
 #include "gui/gui.h"
 
@@ -332,6 +333,9 @@ static void KeyboardCommands() {
 		if (fp_tmp == NULL) {
 			printf("Failed to run command %s\n", shell_cmd_tmp);
 		}
+
+      // Save config file
+      configfile_save(cfg_file_rom);
 	}
 
 #if 0

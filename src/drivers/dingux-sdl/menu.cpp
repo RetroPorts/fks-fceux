@@ -17,6 +17,7 @@
 #include "dface.h"
 
 #include "menu.h"
+#include "configfile.h"
 
 #include "../common/configSys.h"
 #include <SDL/SDL_ttf.h>
@@ -108,13 +109,6 @@ static uint16_t y_brightness_bar = 0;
 
 int volume_percentage = 0;
 int brightness_percentage = 0;
-
-#undef X
-#define X(a, b) b,
-const char *aspect_ratio_name[] = {ASPECT_RATIOS};
-int aspect_ratio = ASPECT_RATIOS_TYPE_CROPPED;
-int aspect_ratio_factor_percent = 50;
-int aspect_ratio_factor_step = 10;
 
 #undef X
 #define X(a, b) b,
@@ -773,8 +767,12 @@ void run_menu_loop()
                         else if(idx_menus[menuItem] == MENU_TYPE_ASPECT_RATIO){
                             MENU_DEBUG_PRINTF("Aspect Ratio DOWN\n");
                             aspect_ratio = (!aspect_ratio)?(NB_ASPECT_RATIOS_TYPES-1):(aspect_ratio-1);
+                            
                             /// ------ Refresh screen ------
                             screen_refresh = 1;
+
+                            // Save config file
+                            configfile_save(cfg_file_rom);
                         }
                         break;
 
@@ -840,8 +838,12 @@ void run_menu_loop()
                         else if(idx_menus[menuItem] == MENU_TYPE_ASPECT_RATIO){
                             MENU_DEBUG_PRINTF("Aspect Ratio UP\n");
                             aspect_ratio = (aspect_ratio+1)%NB_ASPECT_RATIOS_TYPES;
+                            
                             /// ------ Refresh screen ------
                             screen_refresh = 1;
+
+                            // Save config file
+                            configfile_save(cfg_file_rom);
                         }
                         break;
 

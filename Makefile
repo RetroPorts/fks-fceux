@@ -207,11 +207,13 @@ GUI_OBJS = \
 	$(SRC)drivers/dingux-sdl/gui/file_list.o \
 	$(SRC)drivers/dingux-sdl/gui/font.o
 
-DRIVER_OBJS = $(SRC)drivers/dingux-sdl/config.o $(SRC)drivers/dingux-sdl/input.o \
+DRIVER_OBJS = $(SRC)drivers/dingux-sdl/config.o $(SRC)drivers/dingux-sdl/configfile.o \
+	$(SRC)drivers/dingux-sdl/input.o \
 	$(SRC)drivers/dingux-sdl/dingoo.o $(SRC)drivers/dingux-sdl/dingoo-joystick.o \
 	$(SRC)drivers/dingux-sdl/dingoo-throttle.o $(SRC)drivers/dingux-sdl/dingoo-sound.o \
 	$(SRC)drivers/dingux-sdl/dingoo-video.o $(SRC)drivers/dingux-sdl/dummy-netplay.o \
-	$(SRC)drivers/dingux-sdl/scaler.o $(SRC)drivers/dingux-sdl/menu.o $(MINIMAL_OBJS) $(GUI_OBJS)
+	$(SRC)drivers/dingux-sdl/scaler.o $(SRC)drivers/dingux-sdl/menu.o \
+	$(MINIMAL_OBJS) $(GUI_OBJS)
 
 OBJS = $(CORE_OBJS) $(BOARDS_OBJS) $(INPUT_OBJS) $(MAPPERS_OBJS) $(UTILS_OBJS) \
 	$(COMMON_DRIVER_OBJS) $(DRIVER_OBJS)
