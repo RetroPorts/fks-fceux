@@ -6,8 +6,10 @@
 
 ///------ Definition of the different aspect ratios
 #define ASPECT_RATIOS \
+    X(ASPECT_RATIOS_TYPE_MANUAL, "ZOOMED") \
     X(ASPECT_RATIOS_TYPE_STRETCHED, "STRETCHED") \
     X(ASPECT_RATIOS_TYPE_CROPPED, "CROPPED") \
+    X(ASPECT_RATIOS_TYPE_SCALED, "SCALED") \
     X(NB_ASPECT_RATIOS_TYPES, "")
 
 ////------ Enumeration of the different aspect ratios ------
