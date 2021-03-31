@@ -325,44 +325,26 @@ void quick_save_and_poweroff()
 }
 
 static void DoFun(int fskip) {
-	uint8 *gfx;
-	int32 *sound;
-	int32 ssize;
-	extern uint8 PAL;
-	int done = 0, timer = 0, ticks = 0, tick = 0, fps = 0;
-	unsigned int frame_limit = 60, frametime = 16667;
+  uint8 *gfx;
+  int32 *sound;
+  int32 ssize;
+  extern uint8 PAL;
+  int done = 0, timer = 0, ticks = 0, tick = 0, fps = 0;
+  unsigned int frame_limit = 60, frametime = 16667;
 
-	while (GameInfo) {
-		/* Frameskip decision based on the audio buffer */
-		if (!fpsthrottle) {
-			// Fill up the audio buffer with up to 6 frames dropped.
-			int FramesSkipped = 0;
-			while (GameInfo
-			    && GetBufferedSound() < GetBufferSize() * 3 / 2
-			    && ++FramesSkipped < 6) {
-				FCEUI_Emulate(&gfx, &sound, &ssize, 1);
-				FCEUD_Update(NULL, sound, ssize);
-			}
+  fpsthrottle = false;
 
-			// Force at least one frame to be displayed.
-			if (GameInfo) {
-				FCEUI_Emulate(&gfx, &sound, &ssize, 0);
-				FCEUD_Update(gfx, sound, ssize);
-			}
+  while (GameInfo) {
+    int ticks = SDL_GetTicks();
 
-			// Then render all frames while audio is sufficient.
-			while (GameInfo
-			    && GetBufferedSound() > GetBufferSize() * 3 / 2) {
-				FCEUI_Emulate(&gfx, &sound, &ssize, 0);
-				FCEUD_Update(gfx, sound, ssize);
-			}
-		}
-		else {
-			FCEUI_Emulate(&gfx, &sound, &ssize, 0);
-			FCEUD_Update(gfx, sound, ssize);
-		}
-	}
+    FCEUI_Emulate(&gfx, &sound, &ssize, 0);
+    FCEUD_Update(gfx, sound, ssize);
 
+    int msec = SDL_GetTicks() - ticks;
+
+    if (msec < 16)
+      SDL_Delay(16 - msec);
+  }
 }
 
 /**

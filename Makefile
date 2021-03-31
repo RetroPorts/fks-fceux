@@ -2,8 +2,8 @@ TOOLCHAIN=
 BINDIR=
 
 # CHAINPREFIX := /opt/rs97-toolchain-musl
-CHAINPREFIX := /opt/mipsel-linux-uclibc
-CROSS_COMPILE := $(CHAINPREFIX)/usr/bin/mipsel-linux-
+CHAINPREFIX := /home/jack/Desktop/dev/FunKey-OS/SDK/output/host
+CROSS_COMPILE := $(CHAINPREFIX)/usr/bin/arm-funkey-linux-musleabihf-
 
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++
@@ -21,7 +21,7 @@ CORE_OBJS = \
 	$(SRC)filter.o $(SRC)ines.o $(SRC)input.o $(SRC)debug.o $(SRC)wave.o \
 	$(SRC)nsf.o $(SRC)palette.o $(SRC)ppu.o $(SRC)sound.o $(SRC)state.o $(SRC)unif.o \
  	$(SRC)video.o $(SRC)vsuni.o $(SRC)x6502.o $(SRC)netplay.o $(SRC)emufile.o
-    
+
 BOARDS_OBJS = \
 	$(SRC)boards/01-222.o \
 	$(SRC)boards/3d-block.o \
@@ -193,7 +193,7 @@ INPUT_OBJS = $(SRC)input/arkanoid.o $(SRC)input/bworld.o $(SRC)input/cursor.o \
 	$(SRC)input/powerpad.o $(SRC)input/quiz.o $(SRC)input/shadow.o $(SRC)input/snesmouse.o \
 	$(SRC)input/suborkb.o $(SRC)input/toprider.o $(SRC)input/zapper.o
 
-MAPPERS_OBJS = 
+MAPPERS_OBJS =
 
 UTILS_OBJS = $(SRC)utils/crc32.o $(SRC)utils/endian.o $(SRC)utils/general.o \
 	$(SRC)utils/guid.o $(SRC)utils/md5.o $(SRC)utils/memory.o $(SRC)utils/unzip.o \
