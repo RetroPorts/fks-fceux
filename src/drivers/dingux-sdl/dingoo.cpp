@@ -49,6 +49,9 @@
 #include <windows.h>
 #endif
 
+#include <chrono>
+#include <thread>
+
 extern double g_fpsScale;
 
 extern bool MaxSpeed;
@@ -330,20 +333,27 @@ static void DoFun(int fskip) {
   int32 ssize;
   extern uint8 PAL;
   int done = 0, timer = 0, ticks = 0, tick = 0, fps = 0;
-  unsigned int frame_limit = 60, frametime = 16667;
+  unsigned int frame_limit = 60;
 
-  fpsthrottle = false;
+  namespace sc = std::chrono;
+  using time_stamp = sc::time_point<sc::steady_clock, sc::microseconds>;
+
+  static constexpr auto frametime = sc::microseconds((uint64_t)(1000000 / 60.0f));
 
   while (GameInfo) {
-    int ticks = SDL_GetTicks();
+    time_stamp s = sc::time_point_cast<sc::microseconds>(sc::steady_clock::now());
 
     FCEUI_Emulate(&gfx, &sound, &ssize, 0);
     FCEUD_Update(gfx, sound, ssize);
 
-    int msec = SDL_GetTicks() - ticks;
+    time_stamp e = sc::time_point_cast<sc::microseconds>(sc::steady_clock::now());
 
-    if (msec < 16)
-      SDL_Delay(16 - msec);
+    auto delta = e - s;
+
+    //printf("%d %d %d\n", delta.count(), (frametime - delta).count(), frametime.count());
+
+    if (delta < frametime)
+      std::this_thread::sleep_for(frametime - delta);
   }
 }
 
